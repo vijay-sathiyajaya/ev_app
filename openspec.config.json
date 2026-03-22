@@ -1,0 +1,58 @@
+{
+  "name": "Trading Application",
+  "description": "Spec-driven trading platform with broker connection and account management",
+  "version": "1.0.0",
+  "specVersion": "1.0.0",
+  "framework": "openspec",
+  "projectType": "full-stack",
+  "paths": {
+    "backend": "./backend",
+    "frontend": "./frontend",
+    "specs": "./specs",
+    "changes": "./.openspec/changes"
+  },
+  "features": {
+    "broker_connection": {
+      "description": "Connect and disconnect from trading brokers",
+      "status": "implemented",
+      "endpoints": [
+        "POST /api/trading/connect",
+        "POST /api/trading/disconnect",
+        "GET /api/trading/status"
+      ]
+    },
+    "account_management": {
+      "description": "Manage demo and real trading accounts",
+      "status": "implemented",
+      "endpoints": [
+        "GET /api/trading/account",
+        "POST /api/trading/account/switch"
+      ]
+    },
+    "balance_display": {
+      "description": "Display account balance in toolbar and main view",
+      "status": "implemented",
+      "components": [
+        "Toolbar",
+        "BalanceCard",
+        "StatusInformation"
+      ]
+    }
+  },
+  "rules": {
+    "codeStyle": "vue3-setup-script",
+    "formatting": "prettier",
+    "testing": "vitest",
+    "documentation": "openapi-3.0"
+  },
+  "environments": {
+    "development": {
+      "backend_url": "http://localhost:5000",
+      "frontend_url": "http://localhost:3000"
+    },
+    "production": {
+      "backend_url": "https://api.trading-platform.com",
+      "frontend_url": "https://trading-platform.com"
+    }
+  }
+}

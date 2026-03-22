@@ -1,0 +1,233 @@
+openapi: 3.0.0
+info:
+  title: Trading Platform API
+  description: REST API for trading broker connection and account management
+  version: 1.0.0
+  contact:
+    name: Trading Platform Team
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:5000
+    description: Development server
+  - url: https://api.trading-platform.com
+    description: Production server
+
+paths:
+  /api/trading/status:
+    get:
+      operationId: getTradingStatus
+      summary: Get current trading connection status
+      description: Returns the current connection status, broker name, and account type
+      tags:
+        - Trading
+        - Status
+      responses:
+        '200':
+          description: Current trading status retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  connected:
+                    type: boolean
+                    description: Whether connected to broker
+                  broker:
+                    type: string
+                    description: Name of connected broker
+                    nullable: true
+                  account_type:
+                    type: string
+                    enum: [demo, real]
+                    description: Current account type
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: Request timestamp
+                required:
+                  - connected
+                  - account_type
+                  - timestamp
+
+  /api/trading/connect:
+    post:
+      operationId: connectBroker
+      summary: Connect to trading broker
+      description: Establishes connection to specified trading broker
+      tags:
+        - Trading
+        - Connection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                broker:
+                  type: string
+                  description: Broker name to connect to
+                  example: Demo Broker
+              required:
+                - broker
+      responses:
+        '200':
+          description: Successfully connected to broker
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  connected:
+                    type: boolean
+                  broker:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /api/trading/disconnect:
+    post:
+      operationId: disconnectBroker
+      summary: Disconnect from trading broker
+      description: Terminates connection to currently connected broker
+      tags:
+        - Trading
+        - Connection
+      responses:
+        '200':
+          description: Successfully disconnected from broker
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  connected:
+                    type: boolean
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /api/trading/account:
+    get:
+      operationId: getAccount
+      summary: Get account information
+      description: Retrieves account balance and details for specified account type
+      tags:
+        - Trading
+        - Account
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [demo, real]
+            default: demo
+          description: Account type to retrieve
+      responses:
+        '200':
+          description: Account information retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  account_type:
+                    type: string
+                    enum: [demo, real]
+                  balance:
+                    type: number
+                    format: float
+                    description: Available balance in account
+                  currency:
+                    type: string
+                    default: USD
+                  connected:
+                    type: boolean
+                  timestamp:
+                    type: string
+                    format: date-time
+                required:
+                  - account_type
+                  - balance
+                  - currency
+
+  /api/trading/account/switch:
+    post:
+      operationId: switchAccount
+      summary: Switch account type
+      description: Switches between demo and real trading accounts
+      tags:
+        - Trading
+        - Account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                account_type:
+                  type: string
+                  enum: [demo, real]
+                  description: Target account type
+              required:
+                - account_type
+      responses:
+        '200':
+          description: Successfully switched account type
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  account_type:
+                    type: string
+                    enum: [demo, real]
+                  balance:
+                    type: number
+                    format: float
+                  timestamp:
+                    type: string
+                    format: date-time
+        '400':
+          description: Invalid account type specified
+
+components:
+  schemas:
+    TradingStatus:
+      type: object
+      properties:
+        connected:
+          type: boolean
+        broker:
+          type: string
+        account_type:
+          type: string
+        timestamp:
+          type: string
+
+    Account:
+      type: object
+      properties:
+        account_type:
+          type: string
+        balance:
+          type: number
+        currency:
+          type: string
