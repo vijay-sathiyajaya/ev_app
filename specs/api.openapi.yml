@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
-  title: Trading Platform API
-  description: REST API for trading broker connection and account management
+  title: Trading Platform API - iQOption Integration
+  description: REST API for iQOption broker connection, authentication, and account management
   version: 1.0.0
   contact:
     name: Trading Platform Team
@@ -15,50 +15,14 @@ servers:
     description: Production server
 
 paths:
-  /api/trading/status:
-    get:
-      operationId: getTradingStatus
-      summary: Get current trading connection status
-      description: Returns the current connection status, broker name, and account type
-      tags:
-        - Trading
-        - Status
-      responses:
-        '200':
-          description: Current trading status retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  connected:
-                    type: boolean
-                    description: Whether connected to broker
-                  broker:
-                    type: string
-                    description: Name of connected broker
-                    nullable: true
-                  account_type:
-                    type: string
-                    enum: [demo, real]
-                    description: Current account type
-                  timestamp:
-                    type: string
-                    format: date-time
-                    description: Request timestamp
-                required:
-                  - connected
-                  - account_type
-                  - timestamp
-
-  /api/trading/connect:
+  /api/broker/login:
     post:
-      operationId: connectBroker
-      summary: Connect to trading broker
-      description: Establishes connection to specified trading broker
+      operationId: brokerLogin
+      summary: Authenticate with iQOption broker
+      description: Authenticates user with iQOption broker using credentials and returns session token
       tags:
-        - Trading
-        - Connection
+        - Broker
+        - Authentication
       requestBody:
         required: true
         content:
@@ -66,15 +30,21 @@ paths:
             schema:
               type: object
               properties:
-                broker:
+                email:
                   type: string
-                  description: Broker name to connect to
-                  example: Demo Broker
+                  format: email
+                  description: iQOption account email
+                  example: user@example.com
+                password:
+                  type: string
+                  format: password
+                  description: iQOption account password
               required:
-                - broker
+                - email
+                - password
       responses:
         '200':
-          description: Successfully connected to broker
+          description: Successfully authenticated with iQOption
           content:
             application/json:
               schema:
@@ -82,27 +52,35 @@ paths:
                 properties:
                   success:
                     type: boolean
-                  message:
+                  sessionId:
                     type: string
-                  connected:
-                    type: boolean
+                    description: Session token for authenticated requests
                   broker:
                     type: string
+                    example: iQOption
+                  mode:
+                    type: string
+                    enum: [demo, live]
+                    description: Current trading mode
                   timestamp:
                     type: string
                     format: date-time
+        '401':
+          description: Authentication failed - invalid credentials
+        '400':
+          description: Missing required fields (email or password)
 
-  /api/trading/disconnect:
+  /api/broker/logout:
     post:
-      operationId: disconnectBroker
-      summary: Disconnect from trading broker
-      description: Terminates connection to currently connected broker
+      operationId: brokerLogout
+      summary: Logout from iQOption broker
+      description: Terminates session and cleans up broker connection
       tags:
-        - Trading
-        - Connection
+        - Broker
+        - Authentication
       responses:
         '200':
-          description: Successfully disconnected from broker
+          description: Successfully logged out from iQOption
           content:
             application/json:
               schema:
@@ -112,64 +90,60 @@ paths:
                     type: boolean
                   message:
                     type: string
-                  connected:
-                    type: boolean
                   timestamp:
                     type: string
                     format: date-time
+        '401':
+          description: Not authenticated or session expired
 
-  /api/trading/account:
+  /api/broker/balance:
     get:
-      operationId: getAccount
-      summary: Get account information
-      description: Retrieves account balance and details for specified account type
+      operationId: getBalance
+      summary: Get current account balance
+      description: Retrieves account balance from iQOption for current mode (demo/live)
       tags:
-        - Trading
+        - Broker
         - Account
-      parameters:
-        - name: type
-          in: query
-          required: false
-          schema:
-            type: string
-            enum: [demo, real]
-            default: demo
-          description: Account type to retrieve
       responses:
         '200':
-          description: Account information retrieved successfully
+          description: Successfully retrieved balance
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  account_type:
-                    type: string
-                    enum: [demo, real]
+                  success:
+                    type: boolean
                   balance:
                     type: number
                     format: float
-                    description: Available balance in account
+                    description: Current account balance
                   currency:
                     type: string
-                    default: USD
-                  connected:
-                    type: boolean
+                    description: Currency code
+                    example: USD
+                  mode:
+                    type: string
+                    enum: [demo, live]
+                    description: Current trading mode
+                  lastUpdated:
+                    type: string
+                    format: date-time
                   timestamp:
                     type: string
                     format: date-time
-                required:
-                  - account_type
-                  - balance
-                  - currency
+        '401':
+          description: Not authenticated - no active session
+        '500':
+          description: Error retrieving balance from broker
 
-  /api/trading/account/switch:
+  /api/broker/mode/switch:
     post:
-      operationId: switchAccount
-      summary: Switch account type
-      description: Switches between demo and real trading accounts
+      operationId: switchMode
+      summary: Switch trading mode
+      description: Switches between demo and live trading modes
       tags:
-        - Trading
+        - Broker
         - Account
       requestBody:
         required: true
@@ -178,15 +152,15 @@ paths:
             schema:
               type: object
               properties:
-                account_type:
+                mode:
                   type: string
-                  enum: [demo, real]
-                  description: Target account type
+                  enum: [demo, live]
+                  description: Target trading mode
               required:
-                - account_type
+                - mode
       responses:
         '200':
-          description: Successfully switched account type
+          description: Successfully switched trading mode
           content:
             application/json:
               schema:
@@ -194,40 +168,65 @@ paths:
                 properties:
                   success:
                     type: boolean
-                  message:
+                  mode:
                     type: string
-                  account_type:
-                    type: string
-                    enum: [demo, real]
+                    enum: [demo, live]
+                    description: Current trading mode
                   balance:
                     type: number
                     format: float
+                    description: Balance for the new mode
+                  currency:
+                    type: string
                   timestamp:
                     type: string
                     format: date-time
         '400':
-          description: Invalid account type specified
+          description: Invalid mode specified (not demo or live)
+        '401':
+          description: Not authenticated - no active session
+        '500':
+          description: Error switching mode with broker
 
 components:
   schemas:
-    TradingStatus:
+    BrokerSession:
       type: object
       properties:
-        connected:
-          type: boolean
+        sessionId:
+          type: string
         broker:
           type: string
-        account_type:
+        email:
           type: string
+        mode:
+          type: string
+          enum: [demo, live]
         timestamp:
           type: string
+          format: date-time
 
-    Account:
+    Balance:
       type: object
       properties:
-        account_type:
-          type: string
         balance:
           type: number
         currency:
           type: string
+        mode:
+          type: string
+          enum: [demo, live]
+        lastUpdated:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        error:
+          type: string
+        timestamp:
+          type: string
+          format: date-time

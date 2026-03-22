@@ -69,6 +69,85 @@ Open your browser and navigate to `http://localhost:3000`
 - **Real Account**: $50,000.00 (default)
 - Beautiful balance card with account information
 
+### 4. iqOption Broker Integration (NEW)
+- **Secure Login**: Authenticate with iqOption broker credentials
+- **Demo & Live Mode**: Switch between demo trading (virtual money) and live trading (real money)
+- **Account Balance**: Real-time balance display for current account
+- **Session Management**: Secure session tokens with automatic expiration
+- **Encrypted Credentials**: Credentials stored securely on backend
+
+## iqOption Setup Guide
+
+### Prerequisites
+- Active iqOption trading account (https://iqoption.com)
+- iqOption credentials (email/password)
+
+### Backend Configuration
+
+1. **Set Environment Variables** (`backend/.env`):
+
+```env
+# iqOption Configuration
+IQOPTION_API_ENDPOINT=https://api.iqoption.com
+IQOPTION_WS_ENDPOINT=wss://wsapi.iqoption.com
+SESSION_TIMEOUT_MINUTES=30
+
+# Credential Encryption (Generate a new key)
+CREDENTIAL_ENCRYPTION_KEY=<your-generated-key>
+```
+
+2. **Generate Encryption Key**:
+
+```python
+from cryptography.fernet import Fernet
+key = Fernet.generate_key()
+print(key.decode())  # Copy this to CREDENTIAL_ENCRYPTION_KEY in .env
+```
+
+3. **Install Dependencies**:
+
+```bash
+cd backend
+pip install -r requirements.txt
+```
+
+### Frontend Features
+- **Login Form**: Email and password input with validation
+- **Account Dashboard**: 
+  - Display current account balance
+  - Switch between demo and live trading modes
+  - Logout button for session management
+- **Auto-session Restore**: Automatically restores session from localStorage on page reload
+
+### Usage Flow
+
+1. **Start Backend** (port 5000):
+   ```bash
+   cd backend
+   python main.py
+   ```
+
+2. **Start Frontend** (port 3000):
+   ```bash
+   cd frontend
+   npm run dev
+   ```
+
+3. **Login**:
+   - Enter your iqOption email and password
+   - Click "Sign In"
+   - Session ID is automatically stored
+
+4. **Manage Account**:
+   - View balance for current trading mode (demo or live)
+   - Click refresh button to update balance
+   - Switch between modes using the mode selector
+   - **WARNING**: Live mode uses real money!
+
+5. **Logout**:
+   - Click logout button
+   - Session is cleared and you return to login form
+
 ## Backend API Endpoints
 
 ### Health & Status

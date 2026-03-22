@@ -1,109 +1,220 @@
-# Trading Platform Component Specifications
+# Trading Platform Component Specifications - iQOption Integration
 
 ## Overview
-Component specifications for the Trading Platform UI using Vue 3 with Composition API.
+Component specifications for the Trading Platform UI using Vue 3 with Composition API and iQOption broker integration.
 
 ---
 
-## Toolbar Component
+## LoginForm Component
 
 ### Specification
-- **File**: `src/App.vue` (Integrated within main app)
-- **Type**: Navigation & Quick Actions Bar
-- **Scope**: Global application toolbar
+- **File**: `src/components/LoginForm.vue`
+- **Type**: Authentication Form
+- **Scope**: Initial app state when user is not authenticated
 
 ### Features
-- **Connection Status Indicator**
-  - Visual indicator showing "Connected" or "Not Connected"
-  - Pulsing animation when connected (2s interval)
-  - Color: Green (#4caf50) when connected, Red (#f44336) when disconnected
+- **Email Input Field**
+  - Type: email
+  - Placeholder: "Enter your iQOption email"
+  - Validation: Required, valid email format
+  - Error message: "Please enter a valid email"
 
-- **Connect/Disconnect Buttons**
-  - Button: Connect (⚡) - Initiates broker connection
-  - Button: Disconnect (⊗) - Terminates broker connection
-  - States: Enabled/Disabled based on connection status
-  - Loading state: Shows spinner (⟳) during operation
+- **Password Input Field**
+  - Type: password
+  - Placeholder: "Enter your password"
+  - Validation: Required, minimum 6 characters
+  - Error message: "Password is required"
 
-- **Account Type Toggle**
-  - Demo (D) Button - Switch to demo account
-  - Real (R) Button - Switch to real account
-  - Active indicator: Background highlight on selected type
-  - Disabled during loading operations
+- **Submit Button**
+  - Label: "Login" or "Sign In"
+  - State: Enabled when form is valid
+  - Loading state: Shows spinner and disabled label "Logging in..."
+  - Disabled: While form is invalid or loading
 
-- **Balance Display**
-  - Format: `$X,XXX.XX`
-  - Shows current account balance
-  - Updates when account type changes
-  - Account type label (DEMO/REAL)
+- **Form Validation**
+  - Real-time validation on input change
+  - Visual error indicators (red text)
+  - Green checkmark on valid fields
+  - Submit button enables only when all fields valid
+
+- **Error Display**
+  - Error banner above form for API errors
+  - Displays: "Invalid email or password" or network errors
+  - Auto-dismisses after 5 seconds or on new input
 
 ### Props
 ```typescript
-interface ToolbarProps {
-  isConnected: boolean
-  broker: string | null
-  currentAccountType: 'demo' | 'real'
-  balance: number
+interface LoginFormProps {
   loading: boolean
 }
 ```
 
 ### Events/Methods
-- `connectToBroker()` - Connect to broker
-- `disconnectFromBroker()` - Disconnect from broker
-- `switchAccountType(type)` - Switch account type
+- `submitLogin(email, password)` - Submit login credentials
+- `validateEmail(email)` - Validate email format
+- `validatePassword(password)` - Validate password requirements
+- `clearForm()` - Clear input fields after successful login
+
+### Styling
+- Background: White or light background
+- Form width: 400px max-width on desktop
+- Padding: 40px
+- Border radius: 8px
+- Input spacing: 20px vertical gap
+- Button: Full width, primary color (#667eea)
+- Button hover: Darker shade (#5568d3)
+
+### Data Flow
+1. User enters email and password
+2. Live validation provides feedback
+3. User clicks Submit
+4. Form emits `submitLogin` event with credentials
+5. Parent component calls `/api/broker/login` API
+6. On success: AccountDashboard displays
+7. On error: Error banner shown, form preserved for retry
 
 ---
 
-## Balance Card Component
+## AccountDashboard Component
 
 ### Specification
-- **File**: `src/App.vue` (balance-section)
-- **Type**: Display Card
-- **Visibility**: Only shown when connected
+- **File**: `src/components/AccountDashboard.vue`
+- **Type**: Account Information & Controls Dashboard
+- **Scope**: Displays after successful login
 
-### Structure
+### Sections
+
+#### Header Section
+- **Greeting**: "Welcome, [email]"
+- **Status**: "Connected to iQOption"
+- Connected indicator: Green pulsing dot
+
+#### Balance Display Section
 ```
 Available Balance
-$X,XXX.XX
-USD
-Account: DEMO/REAL
-```
+$X,XXX.XX USD
 
-### Styling
-- Background: Gradient (Purple #667eea to Purple #764ba2)
-- Text Color: White
-- Border Radius: 12px
-- Padding: 40px
+Trading Mode: DEMO / LIVE
+```
+- Balance format: $X,XXX.XX
+- Currency: USD
+- Mode indicator with different colors
+  - Demo: Blue background
+  - Live: Red background with warning icon ⚠️
+
+#### Mode Selector Section
+- **Mode Toggle**: Demo / Live buttons
+- **Current Selection**: Highlighted with background color
+- **Confirmation Dialog** (for switching to live):
+  - Title: "Switch to Live Trading?"
+  - Message: "You will be trading with real money. Are you sure?"
+  - Buttons: Cancel, Confirm
+- **Loading State**: Spinner during mode switch
+
+#### Logout Section
+- **Logout Button**: Red/danger color
+- **Label**: "Logout"
+- **Position**: Bottom of dashboard
+- **Confirmation**: Optional confirmation before logout
 
 ### Props
 ```typescript
-interface BalanceCardProps {
+interface AccountDashboardProps {
+  sessionId: string
+  email: string
   balance: number
-  accountType: 'demo' | 'real'
   currency: string
+  mode: 'demo' | 'live'
+  loading: boolean
 }
 ```
 
----
+### Events/Methods
+- `switchMode(newMode)` - Switch between demo/live
+- `logout()` - Logout user
+- `refreshBalance()` - Manually refresh balance
+- `confirmModeSwitch(newMode)` - Confirm live mode switch
 
-## Status Information Component
-
-### Specification
-- **File**: `src/App.vue` (status-section)
-- **Type**: Information Display
-- **Always Visible**: True
-
-### Information Rows
-1. **Connection Status**: Connected/Disconnected
-   - Color: Green if connected, Red if disconnected
-2. **Current Broker**: Broker name or "None"
-3. **Account Type**: DEMO or REAL
-4. **Last Updated**: HH:MM:SS format
+### Data Fetching
+- On mount: Get balance for current mode
+- On mode switch: Fetch balance for new mode
+- Polling: Update balance every 30 seconds (optional cache)
 
 ### Styling
-- Background: Light gray (#f5f5f5)
-- Border Radius: 8px
-- Two-column layout with label and value
+- Background: Gradient or solid light color
+- Card width: 600px max-width on desktop
+- Padding: 40px
+- Border radius: 12px
+- Sections separated with 30px margins
+- Demo badge: Blue (#2196f3)
+- Live badge: Red (#f44336)
+
+### Responsive Design
+- **Desktop (1024px+)**: Full width layout
+- **Tablet (768px)**: Reduced padding
+- **Mobile (480px)**: Stack vertically, reduce font sizes
+
+---
+
+## App.vue Root Component
+
+### Specification
+- **Type**: Root Application Component
+- **Scope**: Global state management and routing
+
+### State Management
+```typescript
+interface AppState {
+  isAuthenticated: boolean
+  sessionId: string | null
+  email: string
+  balance: number
+  mode: 'demo' | 'live'
+  loading: boolean
+  error: string | null
+}
+```
+
+### Features
+- **Route Decision**: Show LoginForm or AccountDashboard
+- **Session Persistence**: Check localStorage on mount
+- **Auto-login**: Validate session token on page load
+- **Error Banner**: Global error display
+- **Loading Overlay**: Global loading indicator (optional)
+
+### Conditional Rendering
+```javascript
+if (isAuthenticated && sessionId) {
+  show: AccountDashboard
+} else {
+  show: LoginForm
+}
+```
+
+### Methods
+- `handleLogin(email, password)` - Process login
+- `handleLogout()` - Process logout
+- `handleModeSwitch(mode)` - Process mode switch
+- `validateSession()` - Validate stored session token
+- `refreshBalance()` - Refresh balance data
+
+### API Integration
+- `POST /api/broker/login` - Login
+- `POST /api/broker/logout` - Logout
+- `GET /api/broker/balance` - Fetch balance
+- `POST /api/broker/mode/switch` - Switch mode
+
+### Error Handling
+- 401 errors: Trigger logout and return to LoginForm
+- Network errors: Display error banner
+- API errors: Parse and display error message
+- Session errors: Auto-logout if session invalid
+
+### Local Storage
+- **Key**: `sessionId` - Store session token
+- **Persistence**: Survive page reload
+- **Cleanup**: Remove on logout
+- **Validation**: Validate on app load
 
 ---
 
@@ -112,16 +223,24 @@ interface BalanceCardProps {
 ### Specification
 - **Type**: Alert/Notification
 - **Visibility**: Conditional (show when error exists)
-- **Position**: Below toolbar, above main content
+- **Position**: Top of dashboard or centered
 
 ### States
-- **Connection Error**: Red background (#f44336)
-- **Account Error**: Red background (#f44336)
-- **Message**: Clear error description
+- **Authentication Error**: Red background (#f44336)
+- **API Error**: Orange background (#ff9800)
+- **Success Message**: Green background (#4caf50)
 
 ### Behavior
-- Auto-dismiss: No (user must take action to fix)
-- Multiple errors: Can show multiple banners
+- Auto-dismiss: Yes (5 seconds)
+- Manual dismiss: X button to close immediately
+- Multiple errors: Show one at a time, queue if needed
+- Persistence: Clear on component unmount
+
+### Styling
+- Padding: 16px 24px
+- Border radius: 4px
+- Font size: 14px
+- Icon: Left aligned (⚠️, ✓, ✗)
 
 ---
 
@@ -132,60 +251,48 @@ interface BalanceCardProps {
 loading: boolean
 ```
 
-### Disabled States
-- Connect button: Disabled when `isConnected || loading`
-- Disconnect button: Disabled when `!isConnected || loading`
-- Account toggle: Disabled when `loading`
+### Button States During Loading
+- LoginForm Submit: Disabled, shows "Logging in..."
+- Mode Switch: Disabled, shows "Switching..."
+- Logout: Disabled, shows "Logging out..."
 
 ### Visual Feedback
-- Loading buttons: Show spinner icon (⟳)
+- Spinner animation on buttons
+- Overlay on interactive elements
 - Opacity: 0.6 when disabled
-
----
-
-## Responsive Breakpoints
-
-### Desktop (1024px+)
-- Toolbar: Horizontal, all controls visible
-- Balance card: 600px max-width, centered
-
-### Tablet (768px - 1023px)
-- Toolbar: Wraps to 2-3 rows
-- Controls rearrange for better fit
-- Balance card: Responsive padding
-
-### Mobile (480px - 767px)
-- Toolbar: Vertical stack
-- Font sizes: Reduced
-- Button widths: Full width where possible
-
-### Small Mobile (< 480px)
-- Toolbar: Minimal spacing
-- Font sizes: Very small
-- Balance display: Compact
+- Cursor: not-allowed when disabled
 
 ---
 
 ## Accessibility Requirements
 
-- **ARIA Labels**: All buttons have title attributes
-- **Color Contrast**: All text meets WCAG AA standards
-- **Keyboard Navigation**: All buttons accessible via Tab
-- **Focus States**: Visible focus indicators on buttons
-- **Error Messages**: Clear, readable text
+- **ARIA Labels**: All buttons have aria-label
+- **Role Attributes**: form, button, alert roles used correctly
+- **Error Messages**: Associated with form fields (aria-describedby)
+- **Color Contrast**: WCAG AA compliant
+- **Keyboard Navigation**: All controls accessible via Tab
+- **Focus Management**: Focus moved to error on form submission fail
+- **Loading States**: Announced via aria-busy attribute
 
 ---
 
-## API Integration
+## Security Considerations
 
-### Data Flow
-1. **On Mount**: `fetchStatus()` called
-2. **Status Update**: Fetches from `/api/trading/status`
-3. **Balance Update**: Fetches from `/api/trading/account?type={type}`
-4. **Connection Action**: Posts to `/api/trading/connect` or `/api/trading/disconnect`
-5. **Account Switch**: Posts to `/api/trading/account/switch`
+- **Passwords**: Never logged to console
+- **Session Tokens**: Stored in localStorage only (consider httpOnly limitations)
+- **HTTPS**: All API calls use HTTPS in production
+- **CORS**: Configured for trusted origins only
+- **Input Validation**: Client-side and server-side validation
+- **XSS Protection**: Vue's default template escaping used
+- **CSRF**: Token included in session (if applicable)
 
-### Error Handling
-- Try/catch blocks on all API calls
-- Error messages displayed in banners
-- Console logging for debugging
+---
+
+## Performance Requirements
+
+- Component load time: < 200ms
+- API call response: < 1 second
+- Form submission: < 3 seconds
+- Mode switch: < 1 second
+- Balance refresh: < 1 second
+- Page transitions: Smooth (60fps)

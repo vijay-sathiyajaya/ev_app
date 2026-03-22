@@ -1,203 +1,283 @@
-# Trading Platform Feature Specifications
+# Trading Platform Feature Specifications - iQOption Integration
 
-## Feature 1: Broker Connection Management
-
-### Requirement
-User can establish and terminate connection to a trading broker.
-
-### Acceptance Criteria
-- [ ] User can click "Connect Broker" button when not connected
-- [ ] Connection status updates to "Connected" with broker name
-- [ ] User can click "Disconnect Broker" button when connected
-- [ ] Connection status updates to "Not Connected"
-- [ ] Loading state shows spinner during connection/disconnection
-- [ ] Buttons disable appropriately based on connection state
-- [ ] Error messages display if connection fails
-
-### API Endpoints
-- `POST /api/trading/connect` - Establish broker connection
-- `POST /api/trading/disconnect` - Terminate broker connection
-- `GET /api/trading/status` - Check connection status
-
-### UI Components Affected
-- Toolbar (Connect/Disconnect buttons)
-- Status Indicator (Visual feedback)
-- Status Information (Connection status display)
-- Error Banner (Error messages)
-
-### Testing Scenarios
-1. **Happy Path**: Connect → Check status → Disconnect
-2. **Error Handling**: Connection failure → Error message displayed
-3. **Concurrent Actions**: Prevent multiple simultaneous connection attempts
-4. **State Persistence**: Status maintained across component updates
-
----
-
-## Feature 2: Account Type Switching
+## Feature 1: iQOption Broker Login
 
 ### Requirement
-User can switch between demo and real trading accounts while connected to broker.
+User can authenticate with their iQOption account credentials and establish a broker session.
 
 ### Acceptance Criteria
-- [ ] User sees account toggle buttons (D and R) in toolbar
-- [ ] Current account type is highlighted with active styling
-- [ ] Clicking alternate account type switches the account
-- [ ] Balance updates to reflect new account balance
-- [ ] Account type updates in toolbar, balance card, and status info
-- [ ] Cannot switch accounts when disconnected
-- [ ] Loading state prevents multiple simultaneous switches
-- [ ] Error messages display if switch fails
+- [x] User can enter email and password in LoginForm component
+- [x] Form validates email format and password requirements
+- [x] User can submit login form
+- [x] LoginForm shows loading indicator during authentication
+- [x] On successful login, session token is stored in localStorage
+- [x] On successful login, user is shown AccountDashboard
+- [x] Error messages display on authentication failure
+- [x] Form fields are cleared on successful submission
+- [x] Session expiration handled (30-minute default)
 
 ### API Endpoints
-- `POST /api/trading/account/switch` - Change account type
-- `GET /api/trading/account?type={type}` - Fetch account balance
+- `POST /api/broker/login` - Authenticate with iQOption broker
 
-### UI Components Affected
-- Toolbar (Account toggle buttons)
-- Balance Display (In toolbar and balance card)
-- Status Information (Account type field)
-- Error Banner (Error messages)
-
-### Testing Scenarios
-1. **Switch Demo to Real**: Verify balance and UI updates
-2. **Switch Real to Demo**: Verify switch works in both directions
-3. **Rapid Switching**: Multiple quick switches are handled gracefully
-4. **Error Recovery**: Failed switch doesn't corrupt state
-
-### Business Rules
-- Demo account balance: $10,000.00
-- Real account balance: $50,000.00
-- Can only switch when connected to broker
-
----
-
-## Feature 3: Available Balance Display
-
-### Requirement
-System displays current available balance based on account type in real-time.
-
-### Acceptance Criteria
-- [ ] Balance displays in toolbar with account type (DEMO/REAL)
-- [ ] Large balance card shown when connected
-- [ ] Balance updates when account is switched
-- [ ] Currency symbol (USD) displayed
-- [ ] Format: $X,XXX.XX (with proper decimal places)
-- [ ] Balance updates reflect API responses
-- [ ] Handles missing/null balance gracefully
-
-### API Endpoints
-- `GET /api/trading/account?type={type}` - Fetch account balance
-
-### UI Components Affected
-- Toolbar Balance Display (Top right)
-- Balance Card Component (Main content area)
-- Status Information (Account details section)
-
-### Testing Scenarios
-1. **Connect and Check**: Balance displays after connection
-2. **Account Switch**: Balance updates when switching accounts
-3. **Real-time Updates**: Balance reflects API data accurately
-4. **Error State**: Graceful handling if balance fetch fails
-
-### Data Format
+### Request/Response
 ```json
+LOGIN REQUEST:
 {
-  "account_type": "demo|real",
-  "balance": 10000.00,
-  "currency": "USD",
-  "connected": true,
-  "timestamp": "2026-03-22T10:30:00Z"
+  "email": "user@example.com",
+  "password": "password123"
+}
+
+LOGIN RESPONSE (200):
+{
+  "success": true,
+  "sessionId": "session_token_xyz",
+  "broker": "iQOption",
+  "mode": "demo",
+  "timestamp": "2026-03-23T10:30:00Z"
 }
 ```
 
+### UI Components Affected
+- LoginForm.vue (Input fields and submission)
+- App.vue (Auth state management)
+
+### Testing Scenarios
+1. **Happy Path**: Valid credentials → Successful login → Dashboard shown
+2. **Invalid Email**: Invalid format → Validation error before submission
+3. **Wrong Password**: Valid email, wrong password → 401 error displayed
+4. **Missing Fields**: Empty email/password → Form validation error
+5. **Network Error**: API unavailable → Error message displayed
+
 ---
 
-## Feature 4: Connection Status Indicator
+## Feature 2: iQOption Broker Logout
 
 ### Requirement
-Visual indicator showing real-time connection status with pulsing animation.
+User can safely disconnect from their iQOption session and clear all broker data.
 
 ### Acceptance Criteria
-- [ ] Indicator shows "Connected to [Broker Name]" when online
-- [ ] Indicator shows "Not Connected" when offline
-- [ ] Pulsing dot animation when connected (green color)
-- [ ] Static dot when disconnected (red color)
-- [ ] Animation frequency: 2 seconds pulse interval
-- [ ] Visible in toolbar and status section
+- [x] Logout button available in AccountDashboard
+- [x] On logout click, session is terminated with broker
+- [x] Session token removed from localStorage
+- [x] User returned to LoginForm
+- [x] Balance and mode data cleared
+- [x] Logout completes within 2 seconds
+
+### API Endpoints
+- `POST /api/broker/logout` - Terminate broker session
+
+### Response
+```json
+{
+  "success": true,
+  "message": "Successfully logged out",
+  "timestamp": "2026-03-23T10:35:00Z"
+}
+```
 
 ### UI Components Affected
-- Toolbar Status Indicator
-- Status Information (Text display)
+- AccountDashboard.vue (Logout button)
+- App.vue (Auth state reset)
 
-### Colors
-- Connected: Green (#4caf50)
-- Disconnected: Red (#f44336)
-- Pulsing: 0 to 50% opacity in 2-second cycle
+### Testing Scenarios
+1. **Standard Logout**: Click logout → Session cleared → LoginForm shown
+2. **Session Expired**: Auto-logout on expired session → LoginForm shown
+3. **Logout Error**: Broker API fails → Error displayed but state cleared locally
+
+---
+
+## Feature 3: Account Balance Display
+
+### Requirement
+System displays current iQOption account balance based on trading mode in real-time.
+
+### Acceptance Criteria
+- [x] Balance displays in AccountDashboard after login
+- [x] Balance reflects current trading mode (demo/live)
+- [x] Currency symbol (USD) displayed
+- [x] Format: $X,XXX.XX (with proper decimal places)
+- [x] Balance updates when mode is switched
+- [x] Last-updated timestamp included in response
+- [x] Handles missing/null balance gracefully
+- [x] Balance auto-refreshes on page load for authenticated users
+
+### API Endpoints
+- `GET /api/broker/balance` - Fetch account balance
+
+### Response
+```json
+{
+  "success": true,
+  "balance": 10000.50,
+  "currency": "USD",
+  "mode": "demo",
+  "lastUpdated": "2026-03-23T10:30:45Z",
+  "timestamp": "2026-03-23T10:30:50Z"
+}
+```
+
+### UI Components Affected
+- AccountDashboard.vue (Balance display)
+- App.vue (Balance state management)
+
+### Business Rules
+- Demo mode balance: Starting from $10,000
+- Live mode balance: User's actual account balance
+- Updates on every mode switch
+- Cached for performance (with TTL)
+
+### Testing Scenarios
+1. **Connect and Check**: Login → Balance displays
+2. **Mode Switch**: Switch modes → Balance updates immediately
+3. **Page Reload**: Refresh page → Balance persists from localStorage
+4. **API Failure**: Balance fetch fails → Error shown, balance stays visible
+5. **Real-time Updates**: Multiple rapid fetches work correctly
+
+---
+
+## Feature 4: Demo/Live Mode Switching
+
+### Requirement
+User can switch between demo (practice) and live (real money) trading modes.
+
+### Acceptance Criteria
+- [x] Mode selector (demo/live toggle or dropdown) in AccountDashboard
+- [x] Current mode prominently displayed
+- [x] User can click to switch modes
+- [x] Confirmation dialog shown before switching to live mode
+- [x] Balance updates to reflect new mode balance after switch
+- [x] Mode preference stored in backend session
+- [x] Mode persists across page reloads
+- [x] Switching completes within 1 second
+- [x] Live mode has warning/visual distinction
+
+### API Endpoints
+- `POST /api/broker/mode/switch` - Change trading mode
+
+### Request/Response
+```json
+SWITCH REQUEST:
+{
+  "mode": "live"
+}
+
+SWITCH RESPONSE (200):
+{
+  "success": true,
+  "mode": "live",
+  "balance": 50000.00,
+  "currency": "USD",
+  "timestamp": "2026-03-23T10:35:00Z"
+}
+```
+
+### UI Components Affected
+- AccountDashboard.vue (Mode selector and display)
+- App.vue (Mode state management)
+
+### Business Rules
+- Demo mode: Safe practice environment
+- Live mode: Real trading with actual money
+- Confirmation required before live mode
+- Mode stored in session (backend session storage)
+
+### Testing Scenarios
+1. **Demo to Live**: Switch demo → live → Confirmation shown → Balance updates
+2. **Live to Demo**: Switch live → demo → No confirmation needed → Balance updates
+3. **Rapid Switching**: Quick mode switches handled gracefully
+4. **Persistence**: Switch mode → Reload page → Mode persists
+5. **Error Recovery**: Mode switch fails → State reverts to previous mode
 
 ---
 
 ## Integration Workflows
 
-### Workflow 1: Initial App Load
-1. App mounts
-2. `fetchStatus()` called
-3. API returns current connection and account status
-4. UI renders based on returned state
-5. Balance fetched for current account type
+### Workflow 1: App Launch
+1. App mounts (App.vue)
+2. Check localStorage for sessionId
+3. If sessionId exists: Auto-login (validate session)
+4. If no sessionId: Show LoginForm
+5. Fetch balance and mode for authenticated user
 
-### Workflow 2: User Connects to Broker
-1. User clicks "Connect Broker"
-2. Loading state activated
-3. `connectToBroker()` posts to API
-4. API updates connection state
-5. `fetchStatus()` called to sync UI
-6. All components update with new status
-7. Balance card becomes visible
+### Workflow 2: User Login
+1. User enters email and password in LoginForm
+2. Form validates input
+3. POST /api/broker/login with credentials
+4. Backend returns sessionId
+5. sessionId stored in localStorage
+6. App state updated with auth=true
+7. AccountDashboard displays with balance and mode
 
-### Workflow 3: User Switches Account
-1. User clicks account type button
-2. Loading state activated
-3. `switchAccount()` posts to API
-4. API updates account type in state
-5. Balance fetched for new account type
-6. All balance displays update
-7. Account type updated in all locations
+### Workflow 3: User Switches Mode
+1. User clicks mode toggle in AccountDashboard
+2. If switching to live: Confirmation dialog shown
+3. POST /api/broker/mode/switch with new mode
+4. Backend updates session mode
+5. GET /api/broker/balance called automatically
+6. Balance updates in UI
+7. Mode updates in all components
 
-### Workflow 4: User Disconnects
-1. User clicks "Disconnect Broker"
-2. Loading state activated
-3. `disconnectBroker()` posts to API
-4. Connection state set to false
-5. Balance card hidden
-6. Status updated to "Not Connected"
-7. Account toggle buttons become disabled
+### Workflow 4: User Logout
+1. User clicks Logout button
+2. POST /api/broker/logout called
+3. Backend clears session
+4. sessionId removed from localStorage
+5. App state reset to auth=false
+6. LoginForm displayed
+
+### Workflow 5: Session Expiration
+1. API request returns 401 (Not authenticated)
+2. Backend session expired (default: 30 minutes)
+3. Frontend detects 401 and calls logout
+4. User returned to LoginForm
+5. Error message: "Session expired. Please login again."
 
 ---
 
 ## Error Handling
 
-### Connection Errors
-- **Scenario**: Broker API unavailable
-- **Response**: Error banner "Failed to connect to broker"
-- **Recovery**: User can retry connection
+### Authentication Errors
+- **Invalid Credentials**: 401 response → Show "Invalid email or password"
+- **Missing Fields**: 400 response → Show form validation errors
+- **Network Error**: Connection failed → Show "Unable to connect to broker"
 
 ### Balance Fetch Errors
-- **Scenario**: Balance API fails
-- **Response**: Error banner "Failed to fetch balance"
-- **Recovery**: User can manually refresh
+- **Not Authenticated**: 401 response → Auto-logout triggered
+- **Broker Error**: 500 response → Show "Failed to fetch balance, please try again"
+- **Timeout**: Request timeout → Show cached balance or error
 
-### Account Switch Errors
-- **Scenario**: Invalid account type or server error
-- **Response**: Error banner "Failed to switch account"
-- **Recovery**: Account type reverts to previous, user can retry
+### Mode Switch Errors
+- **Invalid Mode**: 400 response → Show "Invalid trading mode"
+- **Not Authenticated**: 401 response → Auto-logout triggered
+- **Broker Error**: 500 response → Show "Failed to switch mode, please try again"
+- **Already in Mode**: User tries to switch to current mode → No action needed
+
+### Session Expiration
+- **Expired Session**: Any 401 response → Auto-logout to LoginForm
+- **Default Timeout**: 30 minutes of inactivity
+- **Clear Message**: "Your session has expired. Please login again."
 
 ---
 
 ## Performance Requirements
 
-- Connect/Disconnect: < 2 seconds response time
-- Account Switch: < 1 second balance update
-- Status Check: < 500ms response time
+- Login: < 3 seconds response time
+- Logout: < 1 second response time
+- Balance Fetch: < 1 second response time
+- Mode Switch: < 1 second response time
+- Page Load (authenticated): < 2 seconds to show account dashboard
+- Session Validation: < 500ms on app load
+
+---
+
+## Security Requirements
+
+- Passwords transmitted over HTTPS only
+- Session tokens stored securely in localStorage (httpOnly not possible in SPA)
+- CORS configured for trusted origins only
+- Session expiration: 30 minutes default
+- Rate limiting on login attempts (max 5 attempts per minute)
+- Credentials never logged or exposed in console
 - UI Update: Immediate (client-side)
 - Animation Smoothness: 60 FPS (CSS animations)
 

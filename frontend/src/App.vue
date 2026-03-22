@@ -1,119 +1,28 @@
 <template>
-  <div id="app" class="container">
-    <!-- Top Toolbar -->
-    <nav class="toolbar">
-      <div class="toolbar-left">
-        <h1 class="toolbar-title">{{ title }}</h1>
-      </div>
+  <div id="app">
+    <!-- Show Login Form if Not Authenticated -->
+    <LoginForm
+      v-if="!isAuthenticated"
+      @login="handleLogin"
+      :apiUrl="apiUrl"
+    />
 
-      <div class="toolbar-center">
-        <div class="status-indicator-toolbar" :class="{ connected: isConnected, disconnected: !isConnected }">
-          <span class="status-dot-toolbar"></span>
-          <span class="status-text-toolbar">
-            {{ isConnected ? 'Connected to ' + broker : 'Not Connected' }}
-          </span>
-        </div>
-      </div>
-
-      <div class="toolbar-right">
-        <!-- Connection Buttons -->
-        <div class="toolbar-button-group">
-          <button 
-            @click="connectToBroker" 
-            :disabled="isConnected || loading"
-            class="btn btn-toolbar btn-connect"
-            title="Connect to trading broker"
-          >
-            {{ loading ? '⟳' : '⚡' }}
-          </button>
-          <button 
-            @click="disconnectFromBroker" 
-            :disabled="!isConnected || loading"
-            class="btn btn-toolbar btn-disconnect"
-            title="Disconnect from broker"
-          >
-            {{ loading ? '⟳' : '⊗' }}
-          </button>
-        </div>
-
-        <!-- Account Type Switcher -->
-        <div class="toolbar-button-group account-toggle">
-          <button 
-            v-for="type in accountTypes"
-            :key="type"
-            @click="switchAccountType(type)"
-            :disabled="loading"
-            :class="{ active: currentAccountType === type }"
-            class="btn btn-toolbar-toggle"
-            :title="`Switch to ${type.toUpperCase()} account`"
-          >
-            {{ type.substring(0, 1).toUpperCase() }}
-          </button>
-        </div>
-
-        <!-- Balance Display -->
-        <div class="balance-display">
-          <div class="balance-amount-small">${{ balance.toFixed(2) }}</div>
-          <div class="balance-label-small">{{ currentAccountType.toUpperCase() }}</div>
-        </div>
-      </div>
-    </nav>
-
-    <!-- Main Header -->
-    <header class="header">
-      <p class="subtitle">Trading Application Dashboard</p>
-    </header>
-
-    <!-- Error Messages -->
-    <div v-if="connectionError" class="error-banner">
-      {{ connectionError }}
-    </div>
-    <div v-if="accountError" class="error-banner">
-      {{ accountError }}
-    </div>
-
-    <!-- Balance Card (Main Display) -->
-    <section class="section balance-section" v-if="isConnected">
-      <div class="balance-card-main">
-        <div class="balance-label">Available Balance</div>
-        <div class="balance-amount-main">${{ balance.toFixed(2) }}</div>
-        <div class="balance-currency">USD</div>
-        <div class="account-info-main">
-          Account: <strong>{{ currentAccountType.toUpperCase() }}</strong>
-        </div>
-      </div>
-    </section>
-
-    <!-- Status Information -->
-    <section class="section status-section">
-      <h2>Status Information</h2>
-      <div class="status-info">
-        <div class="info-row">
-          <span class="info-label">Connection Status:</span>
-          <span :class="{ 'text-success': isConnected, 'text-danger': !isConnected }">
-            {{ isConnected ? 'Connected' : 'Disconnected' }}
-          </span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Current Broker:</span>
-          <span>{{ broker || 'None' }}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Account Type:</span>
-          <span>{{ currentAccountType.toUpperCase() }}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Last Updated:</span>
-          <span>{{ lastUpdated }}</span>
-        </div>
-      </div>
-    </section>
+    <!-- Show Account Dashboard if Authenticated -->
+    <AccountDashboard
+      v-else
+      :sessionId="sessionId"
+      :userEmail="userEmail"
+      :apiUrl="apiUrl"
+      @logout="handleLogout"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { tradingAPI } from './services/api'
+import { ref, onMounted, computed } from 'vue'
+import { tradingAPI, brokerAPI } from './services/api'
+import LoginForm from './components/LoginForm.vue'
+import AccountDashboard from './components/AccountDashboard.vue'
 
 const title = ref('Trading Platform')
 const isConnected = ref(false)
@@ -125,6 +34,59 @@ const loading = ref(false)
 const connectionError = ref(null)
 const accountError = ref(null)
 const lastUpdated = ref('')
+
+// Authentication state
+const isAuthenticated = ref(false)
+const sessionId = ref(null)
+const userEmail = ref(null)
+const apiUrl = ref('http://localhost:5000')
+
+// Theme Management
+const THEME_STORAGE_KEY = 'app-theme-preference'
+const theme = ref('light')
+
+// Initialize theme with preference priority: localStorage → system preference → light default
+const initializeTheme = () => {
+  const storedTheme = localStorage.getItem(THEME_STORAGE_KEY)
+  
+  if (storedTheme) {
+    theme.value = storedTheme
+  } else {
+    // Check system preference
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    theme.value = prefersDark ? 'dark' : 'light'
+  }
+}
+
+// Toggle theme and persist to localStorage
+const toggleTheme = () => {
+  theme.value = theme.value === 'light' ? 'dark' : 'light'
+  localStorage.setItem(THEME_STORAGE_KEY, theme.value)
+}
+
+// CSS variables for theme colors
+const colorVars = computed(() => {
+  const isDark = theme.value === 'dark'
+  
+  return {
+    '--color-bg-primary': isDark ? '#121212' : 'white',
+    '--color-bg-secondary': isDark ? '#1e1e1e' : '#f5f5f5',
+    '--color-bg-gradient-start': isDark ? '#1a1a2e' : '#667eea',
+    '--color-bg-gradient-end': isDark ? '#16213e' : '#764ba2',
+    '--color-text-primary': isDark ? '#e0e0e0' : '#333',
+    '--color-text-secondary': isDark ? '#bbb' : '#555',
+    '--color-text-tertiary': isDark ? '#888' : '#999',
+    '--color-primary': isDark ? '#667eea' : '#667eea',
+    '--color-primary-light': isDark ? '#7b9dff' : '#667eea',
+    '--color-success': isDark ? '#66bb6a' : '#4caf50',
+    '--color-success-light': isDark ? '#81c784' : '#c8e6c9',
+    '--color-danger': isDark ? '#ef5350' : '#f44336',
+    '--color-danger-light': isDark ? '#e57373' : '#ffcdd2',
+    '--color-shadow': isDark ? 'rgba(0, 0, 0, 0.3)' : 'rgba(0, 0, 0, 0.1)',
+    '--color-border': isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+    '--color-overlay': isDark ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.5)',
+  }
+})
 
 // Fetch trading status on mount
 const fetchStatus = async () => {
@@ -203,8 +165,41 @@ const updateTimestamp = () => {
   lastUpdated.value = new Date().toLocaleTimeString()
 }
 
+// Handle login from LoginForm component
+const handleLogin = (loginData) => {
+  sessionId.value = loginData.sessionId
+  userEmail.value = loginData.email
+  isAuthenticated.value = true
+}
+
+// Handle logout from AccountDashboard component
+const handleLogout = () => {
+  sessionId.value = null
+  userEmail.value = null
+  isAuthenticated.value = false
+  // Clear other state
+  isConnected.value = false
+  balance.value = 0
+}
+
+// Check for existing session on mount
+const checkExistingSession = () => {
+  const storedSessionId = localStorage.getItem('sessionId')
+  const storedEmail = localStorage.getItem('userEmail')
+  
+  if (storedSessionId && storedEmail) {
+    sessionId.value = storedSessionId
+    userEmail.value = storedEmail
+    isAuthenticated.value = true
+  }
+}
+
 onMounted(() => {
-  fetchStatus()
+  initializeTheme()
+  checkExistingSession()
+  if (isAuthenticated.value) {
+    fetchStatus()
+  }
 })
 </script>
 
@@ -217,26 +212,33 @@ onMounted(() => {
 
 .container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--color-bg-gradient-start) 0%, var(--color-bg-gradient-end) 100%);
   padding: 0;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: var(--color-text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.container.dark-mode {
+  background: linear-gradient(135deg, var(--color-bg-gradient-start) 0%, var(--color-bg-gradient-end) 100%);
 }
 
 /* Toolbar Styles */
 .toolbar {
   background: rgba(0, 0, 0, 0.15);
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  border-bottom: 1px solid var(--color-border);
   padding: 12px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 6px var(--color-shadow);
   position: sticky;
   top: 0;
   z-index: 100;
   flex-wrap: wrap;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .toolbar-left {
@@ -279,16 +281,17 @@ onMounted(() => {
   background: rgba(255, 255, 255, 0.15);
   color: white;
   backdrop-filter: blur(10px);
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
 .status-indicator-toolbar.connected {
   background: rgba(76, 175, 80, 0.3);
-  color: #c8e6c9;
+  color: var(--color-success-light);
 }
 
 .status-indicator-toolbar.disconnected {
   background: rgba(244, 67, 54, 0.3);
-  color: #ffcdd2;
+  color: var(--color-danger-light);
 }
 
 .status-dot-toolbar {
@@ -299,11 +302,11 @@ onMounted(() => {
 }
 
 .status-indicator-toolbar.connected .status-dot-toolbar {
-  background-color: #4caf50;
+  background-color: var(--color-success);
 }
 
 .status-indicator-toolbar.disconnected .status-dot-toolbar {
-  background-color: #f44336;
+  background-color: var(--color-danger);
 }
 
 .status-text-toolbar {
@@ -353,7 +356,7 @@ onMounted(() => {
 .btn-connect {
   background: rgba(76, 175, 80, 0.3);
   border-color: rgba(76, 175, 80, 0.5);
-  color: #c8e6c9;
+  color: var(--color-success-light);
 }
 
 .btn-connect:hover:not(:disabled) {
@@ -364,12 +367,38 @@ onMounted(() => {
 .btn-disconnect {
   background: rgba(244, 67, 54, 0.3);
   border-color: rgba(244, 67, 54, 0.5);
-  color: #ffcdd2;
+  color: var(--color-danger-light);
 }
 
 .btn-disconnect:hover:not(:disabled) {
   background: rgba(244, 67, 54, 0.5);
   border-color: rgba(244, 67, 54, 0.8);
+}
+
+/* Theme Toggle Button */
+.btn-theme-toggle {
+  padding: 8px 12px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-theme-toggle:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: scale(1.1);
+}
+
+.btn-theme-toggle.theme-dark {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 /* Account Toggle in Toolbar */
@@ -397,8 +426,8 @@ onMounted(() => {
 }
 
 .btn-toolbar-toggle.active {
-  background: #667eea;
-  border-color: #667eea;
+  background: var(--color-primary);
+  border-color: var(--color-primary);
   color: white;
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
@@ -417,6 +446,7 @@ onMounted(() => {
   text-align: right;
   backdrop-filter: blur(10px);
   min-width: 120px;
+  transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .balance-amount-small {
@@ -446,44 +476,47 @@ onMounted(() => {
 
 /* Error Banner */
 .error-banner {
-  background-color: #f44336;
+  background-color: var(--color-danger);
   color: white;
   padding: 12px 20px;
   margin: 10px;
   border-radius: 6px;
   font-weight: 600;
   box-shadow: 0 2px 8px rgba(244, 67, 54, 0.3);
+  transition: background-color 0.3s ease;
 }
 
 /* Sections */
 .section {
-  background: white;
+  background: var(--color-bg-primary);
   border-radius: 12px;
   padding: 30px;
   margin: 20px auto;
   max-width: 600px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 40px var(--color-shadow);
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .section h2 {
-  color: #333;
+  color: var(--color-text-primary);
   margin-bottom: 25px;
   font-size: 1.5rem;
-  border-bottom: 2px solid #667eea;
+  border-bottom: 2px solid var(--color-primary);
   padding-bottom: 10px;
 }
 
 /* Balance Section */
 .balance-section {
-  background: white;
+  background: var(--color-bg-primary);
 }
 
 .balance-card-main {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--color-bg-gradient-start) 0%, var(--color-bg-gradient-end) 100%);
   color: white;
   border-radius: 12px;
   padding: 40px;
   text-align: center;
+  transition: background 0.3s ease;
 }
 
 .balance-label {
@@ -515,20 +548,22 @@ onMounted(() => {
 
 /* Status Section */
 .status-section {
-  background: white;
+  background: var(--color-bg-primary);
 }
 
 .status-info {
-  background-color: #f5f5f5;
+  background-color: var(--color-bg-secondary);
   border-radius: 8px;
   padding: 20px;
+  transition: background-color 0.3s ease;
 }
 
 .info-row {
   display: flex;
   justify-content: space-between;
   padding: 12px 0;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--color-border);
+  transition: border-color 0.3s ease;
 }
 
 .info-row:last-child {
@@ -537,16 +572,16 @@ onMounted(() => {
 
 .info-label {
   font-weight: 600;
-  color: #555;
+  color: var(--color-text-secondary);
 }
 
 .text-success {
-  color: #4caf50;
+  color: var(--color-success);
   font-weight: 600;
 }
 
 .text-danger {
-  color: #f44336;
+  color: var(--color-danger);
   font-weight: 600;
 }
 
