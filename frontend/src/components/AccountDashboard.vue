@@ -4,13 +4,22 @@
       <!-- Header -->
       <div class="dashboard-header">
         <h1 class="dashboard-title">Account Dashboard</h1>
-        <button
-          @click="handleLogout"
-          class="btn-logout"
-          :disabled="isLoading"
-        >
-          {{ isLoading ? '⟳' : '⊗' }} Logout
-        </button>
+        <div class="header-buttons">
+          <button
+            @click="toggleTheme"
+            class="btn-theme-toggle"
+            :title="`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`"
+          >
+            {{ theme === 'light' ? '🌙' : '☀️' }}
+          </button>
+          <button
+            @click="handleLogout"
+            class="btn-logout"
+            :disabled="isLoading"
+          >
+            {{ isLoading ? '⟳' : '⊗' }} Logout
+          </button>
+        </div>
       </div>
 
       <!-- Account Info Card -->
@@ -68,6 +77,22 @@
         </div>
       </div>
 
+      <!-- Binary Trading Panel Card -->
+      <div class="card trading-panel-card">
+        <div class="card-icon">💱</div>
+        <div class="card-content">
+          <h2 class="card-title">Binary Options Trading</h2>
+          <p class="card-description">Fast-paced Forex binary options trading with real-time quotes and instant execution.</p>
+          <button
+            @click="navigateToBinaryTrading"
+            class="btn-trade"
+            :disabled="isLoading"
+          >
+            📊 Open Trading Panel
+          </button>
+        </div>
+      </div>
+
       <!-- Status Messages -->
       <div v-if="successMessage" class="success-message">
         <span class="success-icon">✓</span>
@@ -97,6 +122,10 @@ export default {
     apiUrl: {
       type: String,
       default: 'http://localhost:5000'
+    },
+    theme: {
+      type: String,
+      default: 'light'
     }
   },
   data() {
@@ -115,6 +144,9 @@ export default {
     this.refreshBalance();
   },
   methods: {
+    toggleTheme() {
+      this.$emit('toggle-theme');
+    },
     async refreshBalance() {
       this.isLoading = true;
       this.errorMessage = '';
@@ -241,6 +273,10 @@ export default {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
       });
+    },
+
+    navigateToBinaryTrading() {
+      this.$emit('navigate', 'binary-trading');
     }
   }
 };
@@ -264,6 +300,7 @@ export default {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 30px;
+  gap: 15px;
 }
 
 .dashboard-title {
@@ -271,6 +308,33 @@ export default {
   font-size: 32px;
   font-weight: 700;
   margin: 0;
+}
+
+.header-buttons {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.btn-theme-toggle {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 2px solid white;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.btn-theme-toggle:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
 }
 
 .btn-logout {
@@ -505,5 +569,43 @@ export default {
 .dark-mode .btn-mode:hover:not(:disabled) {
   border-color: #667eea;
   background: #1a1a1a;
+}
+
+.trading-panel-card {
+  flex-direction: column;
+}
+
+.card-description {
+  color: #666;
+  font-size: 14px;
+  margin: 0 0 15px 0;
+  line-height: 1.5;
+}
+
+.btn-trade {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-trade:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-trade:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dark-mode .card-description {
+  color: #aaa;
 }
 </style>

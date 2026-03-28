@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Binary Options Trading Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080c14;
+    --panel: #0d1422;
+    --border: #1a2540;
+    --accent: #00d4ff;
+    --green: #00ff88;
+    --red: #ff3b5c;
+    --gold: #f0c040;
+    --text: #c8d8f0;
+    --muted: #4a6080;
+    --glow-g: 0 0 16px #00ff8866;
+    --glow-r: 0 0 16px #ff3b5c66;
+    --glow-a: 0 0 12px #00d4ff55;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 15px;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse 80% 40% at 50% 0%, #0a2040 0%, transparent 70%),
+      repeating-linear-gradient(0deg, transparent, transparent 39px, #1a254008 39px, #1a254008 40px),
+      repeating-linear-gradient(90deg, transparent, transparent 39px, #1a254008 39px, #1a254008 40px);
+  }
+
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 28px;
+    background: #090e1a;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 20px;
+    color: var(--accent);
+    letter-spacing: 3px;
+    text-shadow: var(--glow-a);
+  }
+  .logo span { color: var(--gold); }
+  .header-info {
+    display: flex; gap: 28px; align-items: center;
+  }
+  .bal-block { text-align: right; }
+  .bal-label { font-size: 11px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; }
+  .bal-value { font-family: 'Share Tech Mono', monospace; font-size: 20px; color: var(--green); }
+  .live-dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--green); box-shadow: var(--glow-g);
+    animation: pulse 1.4s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.3;} }
+
+  /* LAYOUT */
+  .main {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    grid-template-rows: auto 1fr;
+    gap: 0;
+    height: calc(100vh - 57px);
+  }
+
+  /* ASSET PANEL */
+  .asset-panel {
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    grid-row: 1 / 3;
+    overflow: hidden;
+  }
+  .panel-title {
+    font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--muted); padding: 16px 18px 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .panel-title::before {
+    content:''; width:3px; height:14px; background:var(--accent);
+    border-radius:2px; box-shadow: var(--glow-a);
+  }
+  .search-wrap { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+  .search-wrap input {
+    width: 100%; background: #0a1020; border: 1px solid var(--border);
+    color: var(--text); font-family: 'Rajdhani', sans-serif;
+    font-size: 14px; padding: 8px 12px; border-radius: 4px; outline: none;
+    transition: border-color .2s;
+  }
+  .search-wrap input:focus { border-color: var(--accent); }
+  .search-wrap input::placeholder { color: var(--muted); }
+
+  .asset-list { overflow-y: auto; flex: 1; }
+  .asset-list::-webkit-scrollbar { width: 4px; }
+  .asset-list::-webkit-scrollbar-track { background: transparent; }
+  .asset-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .asset-category { font-size: 10px; letter-spacing: 2px; color: var(--muted);
+    padding: 10px 18px 4px; text-transform: uppercase; }
+
+  .asset-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 18px; cursor: pointer; border-left: 3px solid transparent;
+    transition: all .15s; border-bottom: 1px solid #0d1422;
+    gap: 10px;
+  }
+  .asset-item:hover { background: #111d30; border-left-color: var(--muted); }
+  .asset-item.active { background: #0e1f36; border-left-color: var(--accent); }
+  .asset-name { font-size: 15px; font-weight: 700; color: #e0ecff; }
+  .asset-sub { font-size: 11px; color: var(--muted); }
+  .asset-price-wrap { text-align: right; }
+  .asset-price { font-family: 'Share Tech Mono', monospace; font-size: 13px; color: var(--text); }
+  .asset-change {
+    font-size: 11px; font-weight: 600; margin-left: 4px;
+    padding: 1px 5px; border-radius: 3px;
+  }
+  .asset-change.up { color: var(--green); background: #00ff8815; }
+  .asset-change.dn { color: var(--red); background: #ff3b5c15; }
+
+  /* TRADE AREA */
+  .trade-area {
+    background: var(--bg); padding: 22px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .trade-header {
+    display: flex; align-items: center; gap: 14px; margin-bottom: 20px;
+  }
+  .selected-asset {
+    font-size: 26px; font-weight: 700; color: #fff; letter-spacing: 1px;
+  }
+  .live-price {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 24px; color: var(--accent); text-shadow: var(--glow-a);
+    margin-left: auto;
+  }
+
+  .trade-controls {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px;
+    align-items: end;
+  }
+  .control-group label {
+    display: block; font-size: 11px; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 6px;
+  }
+  .control-group input, .control-group select {
+    width: 100%; background: #0a1020; border: 1px solid var(--border);
+    color: var(--text); font-family: 'Share Tech Mono', monospace;
+    font-size: 15px; padding: 10px 13px; border-radius: 5px;
+    outline: none; transition: border-color .2s; appearance: none;
+  }
+  .control-group input:focus, .control-group select:focus { border-color: var(--accent); }
+
+  .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .btn-up, .btn-dn {
+    padding: 13px 0; border: none; border-radius: 6px;
+    font-family: 'Rajdhani', sans-serif; font-size: 17px;
+    font-weight: 700; letter-spacing: 2px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: all .15s; position: relative; overflow: hidden;
+  }
+  .btn-up {
+    background: linear-gradient(135deg, #00c070, #00ff88);
+    color: #001a0d;
+    box-shadow: var(--glow-g);
+  }
+  .btn-up:hover { filter: brightness(1.15); transform: translateY(-1px); }
+  .btn-dn {
+    background: linear-gradient(135deg, #cc1e3a, #ff3b5c);
+    color: #1a0008;
+    box-shadow: var(--glow-r);
+  }
+  .btn-dn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+  .btn-up:active, .btn-dn:active { transform: translateY(0); }
+  .btn-arrow { font-size: 22px; }
+
+  /* PAYOUT BADGE */
+  .payout-badge {
+    display: flex; align-items: center; gap: 6px;
+    background: #0a1020; border: 1px solid var(--border);
+    padding: 10px 14px; border-radius: 5px;
+  }
+  .payout-label { font-size: 11px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; }
+  .payout-val { font-family: 'Share Tech Mono', monospace; font-size: 22px; color: var(--gold); margin-left: auto; }
+
+  /* ORDERS */
+  .orders-area {
+    background: var(--panel); padding: 0; overflow: hidden; display: flex; flex-direction: column;
+  }
+  .orders-header {
+    display: flex; align-items: center; gap: 12px; padding: 14px 22px;
+    border-bottom: 1px solid var(--border);
+  }
+  .orders-title {
+    font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--muted);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .orders-title::before { content:''; width:3px; height:14px; background:var(--gold); border-radius:2px; }
+  .order-count {
+    background: #1a2540; color: var(--accent);
+    font-family: 'Share Tech Mono', monospace; font-size: 12px;
+    padding: 2px 9px; border-radius: 20px;
+  }
+  .clear-btn {
+    margin-left: auto; background: none; border: 1px solid var(--border);
+    color: var(--muted); font-family: 'Rajdhani', sans-serif; font-size: 12px;
+    letter-spacing: 1px; padding: 4px 12px; border-radius: 4px; cursor: pointer;
+    transition: all .15s;
+  }
+  .clear-btn:hover { border-color: var(--red); color: var(--red); }
+
+  .orders-table-wrap { overflow-y: auto; flex: 1; }
+  .orders-table-wrap::-webkit-scrollbar { width: 4px; }
+  .orders-table-wrap::-webkit-scrollbar-thumb { background: var(--border); }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--muted); text-align: left; padding: 10px 18px;
+    border-bottom: 1px solid var(--border); background: #090e1a;
+    position: sticky; top: 0;
+  }
+  tbody tr {
+    border-bottom: 1px solid #0d1422;
+    transition: background .12s;
+    animation: rowIn .3s ease;
+  }
+  @keyframes rowIn { from{opacity:0;transform:translateX(-12px);} to{opacity:1;transform:none;} }
+  tbody tr:hover { background: #111d30; }
+  tbody td { padding: 11px 18px; font-size: 14px; }
+
+  .dir-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px; border-radius: 4px; font-weight: 700;
+    font-size: 13px; letter-spacing: 1px;
+  }
+  .dir-up { background: #00ff8818; color: var(--green); border: 1px solid #00ff8830; }
+  .dir-dn { background: #ff3b5c18; color: var(--red); border: 1px solid #ff3b5c30; }
+
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 10px; border-radius: 4px; font-size: 12px;
+    font-weight: 600; letter-spacing: 1px;
+  }
+  .status-pending { background: #f0c04015; color: var(--gold); border: 1px solid #f0c04030; }
+  .status-won { background: #00ff8818; color: var(--green); border: 1px solid #00ff8830; }
+  .status-lost { background: #ff3b5c18; color: var(--red); border: 1px solid #ff3b5c30; }
+  .status-dot { width:7px; height:7px; border-radius:50%; }
+  .status-pending .status-dot { background:var(--gold); animation: pulse 1s infinite; }
+  .status-won .status-dot { background:var(--green); }
+  .status-lost .status-dot { background:var(--red); }
+
+  .mono { font-family: 'Share Tech Mono', monospace; }
+  .profit-pos { color: var(--green); }
+  .profit-neg { color: var(--red); }
+
+  .empty-state {
+    text-align: center; padding: 48px 20px; color: var(--muted);
+  }
+  .empty-state .icon { font-size: 40px; margin-bottom: 12px; opacity: .4; }
+  .empty-state p { letter-spacing: 1px; font-size: 13px; }
+
+  /* STATS ROW */
+  .stats-row {
+    display: flex; gap: 0; border-top: 1px solid var(--border);
+    background: #090e1a;
+  }
+  .stat-cell {
+    flex: 1; padding: 10px 18px; text-align: center;
+    border-right: 1px solid var(--border);
+  }
+  .stat-cell:last-child { border-right: none; }
+  .stat-label { font-size: 10px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; }
+  .stat-value { font-family: 'Share Tech Mono', monospace; font-size: 18px; margin-top: 2px; }
+  .s-green { color: var(--green); }
+  .s-red { color: var(--red); }
+  .s-gold { color: var(--gold); }
+  .s-blue { color: var(--accent); }
+
+  /* RESPONSIVE */
+  @media(max-width:900px) {
+    .main { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr; height: auto; }
+    .asset-panel { grid-row: auto; max-height: 260px; }
+    .trade-controls { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">BINARY<span>FX</span></div>
+  <div class="header-info">
+    <div class="bal-block">
+      <div class="bal-label">Balance</div>
+      <div class="bal-value" id="balanceDisplay">$10,000.00</div>
+    </div>
+    <div class="live-dot"></div>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- ASSET PANEL -->
+  <div class="asset-panel">
+    <div class="panel-title">Forex Assets</div>
+    <div class="search-wrap">
+      <input type="text" id="assetSearch" placeholder="Search pair..." oninput="filterAssets()">
+    </div>
+    <div class="asset-list" id="assetList"></div>
+  </div>
+
+  <!-- RIGHT SIDE -->
+  <div style="display:flex;flex-direction:column;overflow:hidden;">
+
+    <!-- TRADE AREA -->
+    <div class="trade-area">
+      <div class="trade-header">
+        <div>
+          <div class="selected-asset" id="selectedAssetName">EUR/USD</div>
+          <div style="font-size:12px;color:var(--muted);letter-spacing:1px;margin-top:2px;">Euro / US Dollar</div>
+        </div>
+        <div style="margin-left:auto;text-align:right;">
+          <div style="font-size:11px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;">Live Price</div>
+          <div class="live-price" id="livePriceDisplay">1.08432</div>
+        </div>
+      </div>
+
+      <div class="trade-controls">
+        <!-- Amount -->
+        <div class="control-group">
+          <label>Investment ($)</label>
+          <input type="number" id="tradeAmount" value="100" min="10" max="5000" step="10">
+        </div>
+        <!-- Expiry -->
+        <div class="control-group">
+          <label>Expiry Time</label>
+          <select id="tradeExpiry">
+            <option value="30">30 Seconds</option>
+            <option value="60" selected>1 Minute</option>
+            <option value="120">2 Minutes</option>
+            <option value="300">5 Minutes</option>
+            <option value="600">10 Minutes</option>
+            <option value="900">15 Minutes</option>
+          </select>
+        </div>
+        <!-- Payout -->
+        <div class="control-group">
+          <label>Payout</label>
+          <div class="payout-badge">
+            <div>
+              <div class="payout-label">Return</div>
+            </div>
+            <div class="payout-val">85%</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:14px;">
+        <div class="btn-group">
+          <button class="btn-up" onclick="placeOrder('UP')">
+            <span class="btn-arrow">▲</span> CALL / UP
+          </button>
+          <button class="btn-dn" onclick="placeOrder('DOWN')">
+            <span class="btn-arrow">▼</span> PUT / DOWN
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ORDERS -->
+    <div class="orders-area">
+      <div class="orders-header">
+        <div class="orders-title">Order History</div>
+        <div class="order-count" id="orderCount">0</div>
+        <button class="clear-btn" onclick="clearOrders()">CLEAR ALL</button>
+      </div>
+
+      <div class="orders-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Asset</th>
+              <th>Direction</th>
+              <th>Entry Price</th>
+              <th>Close Price</th>
+              <th>Amount</th>
+              <th>Expiry</th>
+              <th>Status</th>
+              <th>P&amp;L</th>
+            </tr>
+          </thead>
+          <tbody id="ordersBody">
+            <tr id="emptyRow">
+              <td colspan="9">
+                <div class="empty-state">
+                  <div class="icon">📊</div>
+                  <p>No orders yet. Select an asset and place a trade.</p>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-cell">
+          <div class="stat-label">Total Trades</div>
+          <div class="stat-value s-blue" id="statTotal">0</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-label">Won</div>
+          <div class="stat-value s-green" id="statWon">0</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-label">Lost</div>
+          <div class="stat-value s-red" id="statLost">0</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-label">Win Rate</div>
+          <div class="stat-value s-gold" id="statRate">0%</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-label">Net P&amp;L</div>
+          <div class="stat-value" id="statPnl">$0.00</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ─── FOREX DATA ───────────────────────────────────────────────
+const ASSETS = [
+  { symbol:'EUR/USD', name:'Euro / US Dollar',        price:1.08432, cat:'Major' },
+  { symbol:'GBP/USD', name:'British Pound / USD',     price:1.27165, cat:'Major' },
+  { symbol:'USD/JPY', name:'US Dollar / Japanese Yen',price:149.842, cat:'Major' },
+  { symbol:'USD/CHF', name:'US Dollar / Swiss Franc', price:0.90321, cat:'Major' },
+  { symbol:'AUD/USD', name:'Australian Dollar / USD', price:0.65112, cat:'Major' },
+  { symbol:'USD/CAD', name:'US Dollar / Canadian $',  price:1.35780, cat:'Major' },
+  { symbol:'NZD/USD', name:'New Zealand Dollar / USD',price:0.60455, cat:'Major' },
+  { symbol:'EUR/GBP', name:'Euro / British Pound',    price:0.85270, cat:'Minor' },
+  { symbol:'EUR/JPY', name:'Euro / Japanese Yen',     price:162.540, cat:'Minor' },
+  { symbol:'GBP/JPY', name:'British Pound / Yen',     price:190.820, cat:'Minor' },
+  { symbol:'EUR/AUD', name:'Euro / Australian Dollar',price:1.66430, cat:'Minor' },
+  { symbol:'GBP/CHF', name:'British Pound / CHF',     price:1.15140, cat:'Minor' },
+  { symbol:'AUD/JPY', name:'Australian Dollar / Yen', price:97.650,  cat:'Minor' },
+  { symbol:'USD/SGD', name:'US Dollar / Singapore $', price:1.34530, cat:'Exotic' },
+  { symbol:'USD/HKD', name:'US Dollar / HK Dollar',   price:7.82140, cat:'Exotic' },
+  { symbol:'USD/MXN', name:'US Dollar / Mex Peso',    price:17.0430, cat:'Exotic' },
+  { symbol:'USD/ZAR', name:'US Dollar / South Afr Rand',price:18.620,cat:'Exotic'},
+  { symbol:'EUR/NOK', name:'Euro / Norwegian Krone',  price:11.6430, cat:'Exotic' },
+];
+
+let prices = {};
+ASSETS.forEach(a => prices[a.symbol] = a.price);
+
+let selectedAsset = ASSETS[0];
+let orders = [];
+let balance = 10000;
+let orderCounter = 0;
+
+// ─── RENDER ASSETS ────────────────────────────────────────────
+function renderAssets(filter='') {
+  const list = document.getElementById('assetList');
+  const cats = ['Major','Minor','Exotic'];
+  let html = '';
+  cats.forEach(cat => {
+    const items = ASSETS.filter(a => a.cat === cat &&
+      (a.symbol.toLowerCase().includes(filter) || a.name.toLowerCase().includes(filter)));
+    if (!items.length) return;
+    html += `<div class="asset-category">${cat}</div>`;
+    items.forEach(a => {
+      const chg = ((Math.random()-.48)*0.18).toFixed(2);
+      const up = parseFloat(chg) >= 0;
+      const active = a.symbol === selectedAsset.symbol ? ' active' : '';
+      html += `
+        <div class="asset-item${active}" onclick="selectAsset('${a.symbol}')">
+          <div>
+            <div class="asset-name">${a.symbol}</div>
+            <div class="asset-sub">${a.name.split(' / ')[0]}</div>
+          </div>
+          <div class="asset-price-wrap">
+            <div class="asset-price">${formatPrice(a.symbol, prices[a.symbol])}</div>
+            <div class="asset-change ${up?'up':'dn'}">${up?'+':''}${chg}%</div>
+          </div>
+        </div>`;
+    });
+  });
+  list.innerHTML = html;
+}
+
+function filterAssets() {
+  const v = document.getElementById('assetSearch').value.toLowerCase();
+  renderAssets(v);
+}
+
+function selectAsset(symbol) {
+  selectedAsset = ASSETS.find(a => a.symbol === symbol);
+  document.getElementById('selectedAssetName').textContent = selectedAsset.symbol;
+  document.getElementById('livePriceDisplay').textContent = formatPrice(symbol, prices[symbol]);
+  renderAssets(document.getElementById('assetSearch').value.toLowerCase());
+}
+
+function formatPrice(symbol, price) {
+  if (price > 100) return price.toFixed(3);
+  if (price > 10) return price.toFixed(4);
+  return price.toFixed(5);
+}
+
+// ─── LIVE PRICE SIMULATION ────────────────────────────────────
+function tickPrices() {
+  ASSETS.forEach(a => {
+    const drift = (Math.random() - 0.499) * a.price * 0.0004;
+    prices[a.symbol] = Math.max(0.0001, prices[a.symbol] + drift);
+  });
+  document.getElementById('livePriceDisplay').textContent =
+    formatPrice(selectedAsset.symbol, prices[selectedAsset.symbol]);
+}
+setInterval(tickPrices, 900);
+
+// ─── PLACE ORDER ──────────────────────────────────────────────
+function placeOrder(dir) {
+  const amount = parseFloat(document.getElementById('tradeAmount').value);
+  const expiry = parseInt(document.getElementById('tradeExpiry').value);
+
+  if (isNaN(amount) || amount < 10) { alert('Minimum investment is $10'); return; }
+  if (amount > balance) { alert('Insufficient balance'); return; }
+
+  balance -= amount;
+  updateBalance();
+
+  orderCounter++;
+  const entryPrice = prices[selectedAsset.symbol];
+  const order = {
+    id: orderCounter,
+    asset: selectedAsset.symbol,
+    dir,
+    entryPrice,
+    closePrice: null,
+    amount,
+    expiry,
+    status: 'PENDING',
+    pnl: null,
+    placedAt: Date.now()
+  };
+  orders.unshift(order);
+  renderOrders();
+
+  // Resolve after expiry
+  setTimeout(() => resolveOrder(order.id), expiry * 1000);
+}
+
+function resolveOrder(id) {
+  const order = orders.find(o => o.id === id);
+  if (!order) return;
+  order.closePrice = prices[order.asset];
+  const priceUp = order.closePrice > order.entryPrice;
+  const won = (order.dir === 'UP' && priceUp) || (order.dir === 'DOWN' && !priceUp);
+  order.status = won ? 'WON' : 'LOST';
+  order.pnl = won ? order.amount * 0.85 : -order.amount;
+  if (won) balance += order.amount + order.amount * 0.85;
+  updateBalance();
+  renderOrders();
+}
+
+// ─── RENDER ORDERS ────────────────────────────────────────────
+function renderOrders() {
+  const tbody = document.getElementById('ordersBody');
+  document.getElementById('orderCount').textContent = orders.length;
+
+  if (!orders.length) {
+    tbody.innerHTML = `<tr id="emptyRow"><td colspan="9"><div class="empty-state"><div class="icon">📊</div><p>No orders yet. Select an asset and place a trade.</p></div></td></tr>`;
+    updateStats(); return;
+  }
+
+  tbody.innerHTML = orders.map(o => {
+    const dirHtml = o.dir === 'UP'
+      ? `<span class="dir-badge dir-up">▲ UP</span>`
+      : `<span class="dir-badge dir-dn">▼ DOWN</span>`;
+
+    let statusHtml;
+    if (o.status === 'PENDING') {
+      const remaining = Math.max(0, Math.ceil((o.placedAt + o.expiry*1000 - Date.now())/1000));
+      statusHtml = `<span class="status-badge status-pending"><span class="status-dot"></span>PENDING ${remaining}s</span>`;
+    } else if (o.status === 'WON') {
+      statusHtml = `<span class="status-badge status-won"><span class="status-dot"></span>WON</span>`;
+    } else {
+      statusHtml = `<span class="status-badge status-lost"><span class="status-dot"></span>LOST</span>`;
+    }
+
+    const pnlHtml = o.pnl === null ? '<span style="color:var(--muted)">—</span>'
+      : o.pnl > 0 ? `<span class="mono profit-pos">+$${o.pnl.toFixed(2)}</span>`
+      : `<span class="mono profit-neg">-$${Math.abs(o.pnl).toFixed(2)}</span>`;
+
+    const closeHtml = o.closePrice
+      ? `<span class="mono">${formatPrice(o.asset, o.closePrice)}</span>`
+      : '<span style="color:var(--muted)">—</span>';
+
+    const expiryLabel = o.expiry >= 60 ? `${o.expiry/60}m` : `${o.expiry}s`;
+
+    return `<tr>
+      <td class="mono" style="color:var(--muted)">#${String(o.id).padStart(3,'0')}</td>
+      <td><strong style="color:#e0ecff">${o.asset}</strong></td>
+      <td>${dirHtml}</td>
+      <td class="mono">${formatPrice(o.asset, o.entryPrice)}</td>
+      <td>${closeHtml}</td>
+      <td class="mono">$${o.amount.toFixed(2)}</td>
+      <td style="color:var(--muted)">${expiryLabel}</td>
+      <td>${statusHtml}</td>
+      <td>${pnlHtml}</td>
+    </tr>`;
+  }).join('');
+
+  updateStats();
+
+  // Refresh pending order countdowns
+  if (orders.some(o => o.status === 'PENDING')) {
+    setTimeout(renderOrders, 1000);
+  }
+}
+
+function updateStats() {
+  const completed = orders.filter(o => o.status !== 'PENDING');
+  const won = completed.filter(o => o.status === 'WON').length;
+  const lost = completed.filter(o => o.status === 'LOST').length;
+  const netPnl = completed.reduce((s, o) => s + (o.pnl || 0), 0);
+  const rate = completed.length ? Math.round(won / completed.length * 100) : 0;
+
+  document.getElementById('statTotal').textContent = orders.length;
+  document.getElementById('statWon').textContent = won;
+  document.getElementById('statLost').textContent = lost;
+  document.getElementById('statRate').textContent = rate + '%';
+  const pnlEl = document.getElementById('statPnl');
+  pnlEl.textContent = (netPnl >= 0 ? '+' : '') + '$' + netPnl.toFixed(2);
+  pnlEl.className = 'stat-value ' + (netPnl >= 0 ? 's-green' : 's-red');
+}
+
+function updateBalance() {
+  document.getElementById('balanceDisplay').textContent =
+    '$' + balance.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function clearOrders() {
+  if (!orders.length) return;
+  if (confirm('Clear all completed orders?')) {
+    orders = orders.filter(o => o.status === 'PENDING');
+    renderOrders();
+  }
+}
+
+// ─── INIT ─────────────────────────────────────────────────────
+renderAssets();
+renderOrders();
+</script>
+</body>
+</html>

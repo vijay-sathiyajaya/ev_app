@@ -1,10 +1,19 @@
 <template>
-  <div id="app">
+  <div id="app" :style="colorVars">
     <!-- Show Login Form if Not Authenticated -->
     <LoginForm
       v-if="!isAuthenticated"
       @login="handleLogin"
       :apiUrl="apiUrl"
+    />
+
+    <!-- Show Binary Trading Panel if Authenticated and in binary-trading view -->
+    <BinaryTradingPanel
+      v-else-if="currentView === 'binary-trading'"
+      @back="currentView = 'dashboard'"
+      :theme="theme"
+      :colorVars="colorVars"
+      @toggle-theme="toggleTheme"
     />
 
     <!-- Show Account Dashboard if Authenticated -->
@@ -13,7 +22,10 @@
       :sessionId="sessionId"
       :userEmail="userEmail"
       :apiUrl="apiUrl"
+      :theme="theme"
       @logout="handleLogout"
+      @navigate="navigateToView"
+      @toggle-theme="toggleTheme"
     />
   </div>
 </template>
@@ -23,6 +35,7 @@ import { ref, onMounted, computed } from 'vue'
 import { tradingAPI, brokerAPI } from './services/api'
 import LoginForm from './components/LoginForm.vue'
 import AccountDashboard from './components/AccountDashboard.vue'
+import BinaryTradingPanel from './components/BinaryTradingPanel.vue'
 
 const title = ref('Trading Platform')
 const isConnected = ref(false)
@@ -40,6 +53,7 @@ const isAuthenticated = ref(false)
 const sessionId = ref(null)
 const userEmail = ref(null)
 const apiUrl = ref('http://localhost:5000')
+const currentView = ref('dashboard') // 'dashboard' or 'binary-trading'
 
 // Theme Management
 const THEME_STORAGE_KEY = 'app-theme-preference'
@@ -177,9 +191,15 @@ const handleLogout = () => {
   sessionId.value = null
   userEmail.value = null
   isAuthenticated.value = false
+  currentView.value = 'dashboard' // Reset to dashboard
   // Clear other state
   isConnected.value = false
   balance.value = 0
+}
+
+// Navigate between views
+const navigateToView = (viewName) => {
+  currentView.value = viewName
 }
 
 // Check for existing session on mount
