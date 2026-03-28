@@ -252,9 +252,36 @@
 </template>
 
 <script setup>
+/**
+ * BinaryTradingPanel.vue
+ * 
+ * A Vue 3 component for binary options trading with real-time Forex prices.
+ * 
+ * Features:
+ * - Asset selection from 18 Forex pairs (Major/Minor/Exotic)
+ * - Real-time price simulation with realistic drift
+ * - Binary trading (UP/DOWN) with configurable amounts and expiry times
+ * - Order management with auto-resolution
+ * - Statistics tracking (win rate, P&L, balance)
+ * - Light/Dark theme support via App.vue theme system
+ * 
+ * @component
+ * @example
+ * <BinaryTradingPanel 
+ *   :theme="theme" 
+ *   :colorVars="colorVars"
+ *   @back="goBack"
+ *   @toggle-theme="handleThemeChange"
+ * />
+ */
+
 import { ref, computed, onMounted, onUnmounted } from "vue";
 
-// Theme props from App.vue
+/**
+ * Component props
+ * @prop {String} theme - Current theme ('light' or 'dark')
+ * @prop {Object} colorVars - CSS color variables for theming
+ */
 const props = defineProps({
   theme: {
     type: String,
@@ -266,10 +293,17 @@ const props = defineProps({
   }
 });
 
-// Emit theme toggle
+/**
+ * Component emits
+ * @emits back - Navigate back to dashboard
+ * @emits toggle-theme - Toggle between light/dark theme
+ */
 const emit = defineEmits(['back', 'toggle-theme']);
 
-// Theme toggle shortcut
+/**
+ * Toggle theme between light and dark mode
+ * Emits toggle-theme event to parent component
+ */
 const toggleTheme = () => {
   emit('toggle-theme');
 };
@@ -394,6 +428,10 @@ let priceTickerInterval = null;
 let orderResolutionTimeouts = [];
 
 // ─── INITIALIZATION ─────────────────────────────────────────
+/**
+ * Initialize all asset prices to their starting values
+ * Called once on component mount
+ */
 const initPrices = () => {
   ASSETS.forEach((a) => {
     prices.value[a.symbol] = a.price;
@@ -447,7 +485,15 @@ const netPnlClass = computed(() =>
   netPnl.value >= 0 ? "s-green" : "s-red"
 );
 
-// ─── METHODS ────────────────────────────────────────────────
+/**
+ * Format price with adaptive decimal places based on pair type
+ * @param {String} symbol - Forex pair symbol (e.g., "EUR/USD")
+ * @param {Number} price - Price value
+ * @returns {String} Formatted price (2-5 decimal places)
+ * @example
+ * formatPrice('EUR/USD', 1.08432) // Returns "1.08432"
+ * formatPrice('USD/JPY', 149.842) // Returns "149.842"
+ */
 const formatPrice = (symbol, price) => {
   if (!price) return "0.00";
   if (price > 100) return price.toFixed(3);
@@ -473,6 +519,11 @@ const selectAsset = (symbol) => {
   selectedAsset.value = ASSETS.find((a) => a.symbol === symbol);
 };
 
+/**
+ * Update all Forex prices with realistic market drift
+ * Simulates price ticks with ±0.04% drift per tick
+ * Called every 900ms via setInterval
+ */
 const tickPrices = () => {
   ASSETS.forEach((a) => {
     const drift = (Math.random() - 0.499) * a.price * 0.0004;
@@ -480,6 +531,21 @@ const tickPrices = () => {
   });
 };
 
+/**
+ * Place a new binary options order
+ * @param {String} dir - Trade direction: 'UP' or 'DOWN'
+ * @throws {Error} Validation errors for amount or balance
+ * 
+ * Validation:
+ * - Amount must be >= $10
+ * - Amount must be <= current balance
+ * 
+ * Creates order with:
+ * - Unique ID (auto-incremented)
+ * - Entry price from current asset price
+ * - Status: PENDING
+ * - Schedule resolution after expiry seconds
+ */
 const placeOrder = (dir) => {
   const amount = tradeAmount.value;
   const expiry = tradeExpiry.value;
@@ -520,6 +586,22 @@ const placeOrder = (dir) => {
   orderResolutionTimeouts.push(timeout);
 };
 
+/**
+ * Resolve a pending order based on price movement
+ * @param {Number} orderId - Order ID to resolve
+ * 
+ * Resolution Logic:
+ * - UP direction: Win if closePrice > entryPrice
+ * - DOWN direction: Win if closePrice < entryPrice
+ * - Win P&L: amount × 0.85 (85% payout)
+ * - Loss P&L: -amount (full loss)
+ * 
+ * Updates:
+ * - Order status to WON or LOST
+ * - Order closePrice
+ * - Order pnl
+ * - Balance (adds pnl if win)
+ */
 const resolveOrder = (id) => {
   const order = orders.value.find((o) => o.id === id);
   if (!order) return;
@@ -543,6 +625,12 @@ const remainingSeconds = (order) => {
   return remaining;
 };
 
+/**
+ * Clear all completed orders from the order history table
+ * Removes orders with status WON or LOST
+ * Keeps pending orders in the table
+ * Shows confirmation dialog before clearing
+ */
 const clearOrders = () => {
   if (!orders.value.length) return;
   if (confirm("Clear all completed orders?")) {
